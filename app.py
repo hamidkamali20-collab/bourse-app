@@ -82,28 +82,42 @@ def get_fund(data):
         return {"pe":pe,"gpe":gpe,"ps":ps,"eps":eps,"ff":data.get('ff'),"score":sc,"status":st,"mv":data.get('mv')}
     except: return {"status":"خطا"}
 def get_fipiran(l18):
+    # فیپیران از خارج تایم اوت میده - با تایم اوت کوتاه و فالو بک به BrsApi
     try:
-        for url in [f"https://www.fipiran.ir/Symbol?symbolpara={l18}", f"https://www.fipiran.com/Symbol?symbolpara={l18}"]:
-            r=requests.get(url,headers=HEADERS,timeout=12)
-            if r.status_code!=200: continue
-            soup=BeautifulSoup(r.text,'html.parser')
-            txt=soup.get_text()
-            pe=re.search(r"P/E\s*[:\s]*([\d\.]+)",txt)
-            return {"P/E فیپیران":pe.group(1) if pe else "ناموجود","متن":txt[:500].replace("\n"," ")[:350],"url":url}
-        return {"error":"فیپیران در دسترس نیست"}
-    except Exception as e: return {"error":str(e)}
+        for url in [f"https://www.fipiran.ir/Symbol?symbolpara={l18}", f"https://search.fipiran.ir/api/symbol?symbol={l18}"]:
+            try:
+                r=requests.get(url, headers=HEADERS, timeout=5)
+                if r.status_code!=200: continue
+                soup=BeautifulSoup(r.text,'html.parser')
+                txt=soup.get_text()
+                pe=re.search(r"P/E\s*[:\s]*([\d\.]+)",txt)
+                if pe:
+                    return {"P/E فیپیران":pe.group(1), "متن":txt[:350].replace("\n"," "), "url":url}
+            except requests.exceptions.Timeout:
+                continue
+        # اگر همه تایم اوت شد از BrsApi استفاده کن
+        return {"P/E فیپیران": "از BrsApi بخون - سرور خارج به فیپیران وصله کند است", "متن": "برای سرعت فعلا دیتای P/E از BrsApi بخش فاندامنتال بالایی استفاده کن", "url":"https://www.fipiran.ir"}
+    except Exception as e: return {"error":str(e)[:100]}
 def get_sahamyab(l18):
     try:
-        url=f"https://r.sahamyab.com/hashtag/{l18}"
-        r=requests.get(url,headers=HEADERS,timeout=12)
-        soup=BeautifulSoup(r.text,'html.parser')
-        tw=[]
-        for a in soup.select("a"):
-            t=a.get_text().strip()
-            if len(t)>40: tw.append(t[:300])
-            if len(tw)>=8: break
-        return tw[:8] if tw else ["توئیتی پیدا نشد"]
-    except Exception as e: return [f"خطا: {e}"]
+        import urllib.parse
+        enc = urllib.parse.quote(l18)
+        for url in [f"https://r.sahamyab.com/hashtag/{enc}", f"https://www.sahamyab.com/hashtag/{enc}"]:
+            r=requests.get(url, headers=HEADERS, timeout=8)
+            soup=BeautifulSoup(r.text,'html.parser')
+            tw=[]
+            for a in soup.find_all("a"):
+                t=a.get_text().strip()
+                if len(t)>35 and len(t)<350:
+                    tw.append(t[:300])
+                    if len(tw)>=8: break
+            if tw:
+                uniq=[]
+                for t in tw:
+                    if t not in uniq: uniq.append(t)
+                return uniq[:6]
+        return ["هنوز توئیتی برای این نماد ایندکس نشده - مستقیم ببین:", f"https://r.sahamyab.com/hashtag/{l18}"]
+    except Exception as e: return [f"خطا: {e}"[:100]]
 def get_news():
     src={"سنا":"https://www.sena.ir","دنیای بورس":"https://donya-e-bourse.ir","TGJU":"https://www.tgju.org"}
     all=[]
