@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from bs4 import BeautifulSoup
 import uvicorn
-BRS_KEY = "BzkuT6VuWa2EQ9SaBswapQzetYAUcKjf"
+   BRS_KEY = os.getenv("BRSAPI_KEY")
 BASE = "https://Api.BrsApi.ir"
 HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36"}
 app = FastAPI()
